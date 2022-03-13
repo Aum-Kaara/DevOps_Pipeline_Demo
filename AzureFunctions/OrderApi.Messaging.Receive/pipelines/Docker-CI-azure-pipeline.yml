@@ -1,0 +1,57 @@
+name : OrderApi.Messaging.Receive-Docker-CI-azure-pipeline.yml
+trigger:
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - AzureFunctions/OrderApi.Messaging.Receive/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  ArtifactName: 'OrderApi.Messaging.Receive'  
+  ConnectionString: "Server=tcp:$(SQLServerName),1433;Initial Catalog=$(DatabaseName);Persist Security Info=False;User ID=$(DbUser);Password=$(DbPassword);MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  ContainerRegistry: 'acrmicroservicedemo'
+  DatabaseName: Order  
+  SQLServerName: acrmicroservicedemo.database.windows.net # replace with your server url
+  Repository: 'acrmicroservicedemo.azurecr.io/orderapimessagingreceive'
+  Tag: $(GitVersion.NuGetVersionV2)
+  HelmVersion: 3.5.0  
+
+stages:
+- stage: Build_and_Publish
+  displayName: Build and Publish container
+  jobs:
+  - job: 'Build_and_Publish'
+    displayName: Build and publish the container
+    steps:
+    - task: Docker@2
+      displayName: 'Build Docker Container'
+      inputs:
+        containerRegistry: $(ContainerRegistry)
+        repository: $(Repository)
+        command: 'build'
+        Dockerfile: '**/$(ArtifactName)/$(ArtifactName)/Dockerfile'
+        buildContext: 'AzureFunctions/$(ArtifactName)'
+        tags: |      
+          latest        
+  
+    - task: Docker@2
+      displayName: 'Push Docker Container'
+      inputs:
+        containerRegistry: $(ContainerRegistry)
+        repository: $(Repository)
+        command: 'push'
+        tags: |      
+          latest
+      condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+
+    - task: HelmInstaller@0
+      displayName: 'Install Helm $(HelmVersion)'
+      inputs:
+        helmVersion: $(HelmVersion)
+        checkLatestHelmVersion: false
+        installKubectl: true
+      condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))   

@@ -1,0 +1,88 @@
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+# For more information see https://www.programmingwithwolfgang.com/use-infrastructure-as-code-to-deploy-infrastructure/
+variables:  
+  AksClusterName: microservice-aks
+  AcrRegistryName: acrmicroservicedemo
+  AzureSubscription: AzureServiceConnection # replace with your subscription connection name
+  AzureServiceConnectionPayAsYouGo: AzureServiceConnectionPayAsYouGo # replace with your subscription connection name or use $(AzureSubscription) if you only have one
+  AzureConnectionType: Azure Resource Manager 
+  CertIssuerEmail: #<your email>  # replace with your email
+  CertManagerNamespace: cert-manager 
+  DnsLockName: DeleteDns 
+  DnsRecords: "@('*.customer','*.order','*.kedademo')" # replace with your A records
+  DnsZoneName: programmingwithwolfgang.com # replace with your DNS zone
+  FunctionName: OrderApiMessagingReceive # replace with unique name
+  FunctionOs: Linux
+  FunctionPlanName: MicroservicedemoFunctionPlan
+  FunctionSku: B1  
+  FunctionVersion: 3
+  HelmVersion: '3.5.0'
+  KedaNamespace: keda
+  KedaVersion: 2.4
+  Kubernetesversion: '1.22.6'
+  KubectlVersion: '1.21.2'
+  LokiVersion: '2.0.3'
+  LokiNamespace: loki-grafana
+  NetworkPlugin: azure
+  NodeCount: 1
+  NginxNamespace: ingress-basic
+  ResourceGroupLocation: westeurope
+  ResourceGroupName: MicroserviceDemo  
+  ServiceBusNamespaceName: microservicedemo # replace with unique name
+  ServiceBusNamespaceSku: Basic
+  ServiceBusQueueName: CustomerQueue
+  ServiceBusQueueSasListenName: ReceiveKey
+  ServiceBusQueueSasSendName: SendKey  
+  ServiceBusQueueSasManageName: ManageKey
+  SqlServerName: wolfgangmicroservicedemosql # replace with unique name
+  StorageAccountName: orderreceivestorage # replace with unique name
+
+steps:
+  - task: AzureCLI@2
+    displayName: "Create resource group"
+    inputs:
+      azureSubscription: '$(AzureSubscription)'
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az group create -g "$(ResourceGroupName)" -l "$(ResourceGroupLocation)"
+
+  - task: AzureCLI@2
+    displayName: "Create ACR"
+    inputs:
+      azureSubscription: '$(AzureSubscription)'
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az acr create -n "$(AcrRegistryName)" -g "$(ResourceGroupName)" --sku basic
+
+  # Create AKS
+  - task: AzureCLI@2
+    displayName: "Create AKS cluster"
+    inputs:
+      azureSubscription: '$(AzureSubscription)'
+      scriptType: 'pscore'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az aks create `
+            --resource-group "$(ResourceGroupName)" `
+            --location "$(ResourceGroupLocation)"  `
+            --name "$(AksClusterName)" `
+            --network-plugin $(NetworkPlugin) `
+            --kubernetes-version $(KubernetesVersion) `
+            --node-vm-size Standard_B2s `
+            --node-osdisk-size 0 `
+            --node-count $(NodeCount)`
+            --load-balancer-sku standard `
+            --max-pods 110 `
+            --dns-name-prefix microservice-aks-dns `
+            --generate-ssh-keys `
+            --enable-cluster-autoscaler `
+            --min-count 1 `
+            --max-count 3 `
+            --cluster-autoscaler-profile scale-down-delay-after-add=30s `
+            --cluster-autoscaler-profile scale-down-unneeded-time=1m
