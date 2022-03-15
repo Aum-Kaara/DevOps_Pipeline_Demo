@@ -45,3 +45,9 @@ az aks create `
 # Create Service Connection for Azure Container Registry
 
 ![image](https://user-images.githubusercontent.com/6815990/158156325-c20de667-b4ef-4d3a-8a40-f4e2513383b2.png)
+
+# attach the aks to the acr so it can grab the image from the acr
+
+```
+az aks update -n microservice-aks -g MicroserviceDemo --attach-acr acrmicroservicedemo
+```
