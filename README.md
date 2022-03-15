@@ -8,6 +8,39 @@
 
 # Create Azure Infrastructure components
 
+### Create Resource Group
+```
+az group create -g "$(ResourceGroupName)" -l "$(ResourceGroupLocation)"
+```
+
+### Create Azure Container Registry
+
+``` 
+az acr create -n "$(AcrRegistryName)" -g "$(ResourceGroupName)" --sku basic
+```
+
+### Create Azure Kubernetes Service
+
+```       
+az aks create `
+            --resource-group "$(ResourceGroupName)" `
+            --location "$(ResourceGroupLocation)"  `
+            --name "$(AksClusterName)" `
+            --network-plugin $(NetworkPlugin) `
+            --kubernetes-version $(KubernetesVersion) `
+            --node-vm-size Standard_B2s `
+            --node-osdisk-size 0 `
+            --node-count $(NodeCount)`
+            --load-balancer-sku standard `
+            --max-pods 110 `
+            --dns-name-prefix microservice-aks-dns `
+            --generate-ssh-keys `
+            --enable-cluster-autoscaler `
+            --min-count 1 `
+            --max-count 3 `
+            --cluster-autoscaler-profile scale-down-delay-after-add=30s `
+            --cluster-autoscaler-profile scale-down-unneeded-time=1m 
+ ```
 
 # Create Service Connection for Azure Container Registry
 
